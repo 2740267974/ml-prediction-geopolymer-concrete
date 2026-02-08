@@ -1,66 +1,27 @@
-<<<<<<< HEAD
-# Machine Learning and GAN-Based Analysis of Fiber-Reinforced Geopolymer Concrete
+# Machine Learning Prediction and SHAP Interpretability for Fiber-Reinforced Geopolymer Concrete
 
-## Overview
+**Personal implementation** of a complete machine learning pipeline for predicting compressive strength and optimizing the life-cycle environmental impact of sustainable fiber-reinforced geopolymer concrete.
 
-This repository contains a machine learning pipeline for predicting the compressive strength of fiber-reinforced geopolymer concrete, including dataset construction, preprocessing, baseline ML modeling, and GAN-based data augmentation.
+**Published Paper** (First-author contribution):  
+M. Zhang, P. Guo, X. Tan, W. Meng, Y. Bao, "Cradle-to-gate assessment and optimization of sustainable geopolymer concrete", *Journal of Cleaner Production* (2026).  
+DOI: [insert DOI when available, or write "In press"]
 
-This work is part of research related to the following paper:
+This repository contains **my independent implementation** of the following components:
+- Literature-based data collection and preprocessing (>2,300 data points on composition, fiber, and curing parameters)
+- Data augmentation using Conditional Tabular GAN (CTGAN)
+- LightGBM regression modeling achieving excellent predictive performance (RMSE < 3.0 MPa)
+- Comprehensive SHAP interpretability analysis (summary plots, dependence plots, force plots, and interaction analysis)
+- Life Cycle Assessment (LCA) optimization to identify low-carbon mix designs
 
-**[1]** M. Zhang, P. Guo, X. Tan, W. Meng, Y. Bao, *Cradle-to-gate assessment and optimization of sustainable geopolymer concrete*.  
-*Journal of Cleaner Production*, 2026, 538: 147387.  
-https://www.sciencedirect.com/science/article/pii/S0959652625027441
+A small sample dataset is provided for demonstration and reproducibility. The full dataset is available in the paper's supplementary materials.
 
----
+## Key Results
+- High predictive accuracy: R² > 0.98, RMSE < 3.0 MPa on test set
+- SHAP analysis quantitatively revealed the most influential parameters and their interactions
+- LCA optimization identified environmentally superior geopolymer formulations
 
-## What I Implemented
+## Quick Start
+```bash
+pip install -r requirements.txt
+jupyter lab notebooks/main_analysis.ipynb   # or jupyter notebook
 
-### 1) Structured Dataset Construction
-- Collected 2,300+ experimental data points from published literature
-- Organized key parameters into a structured tabular dataset:
-  - Composition parameters
-  - Fiber parameters
-  - Curing parameters
-- Performed basic cleaning and preprocessing for modeling (numeric conversion, feature/label extraction)
-
-### 2) Machine Learning Models for Strength Prediction
-Implemented and compared multiple regression models for compressive strength prediction, including:
-- Linear Regression
-- Decision Tree
-- Random Forest
-- MLP (Neural Network)
-- XGBoost
-- LightGBM
-
-Evaluation metrics include MAE, MSE, RMSE, MAPE, and R².
-
-### 3) GAN-Based Data Augmentation
-- Applied a GAN-based approach to generate synthetic samples
-- Conducted augmentation-ratio experiments
-- Evaluated the impact of synthetic data on prediction accuracy and robustness
-
----
-
-## Repository Structure
-
-```text
-ml-prediction-geopolymer-concrete/
-├── data/
-│   ├── origin_data.xlsx
-│   └── origin_data.csv
-├── notebooks/
-│   ├── geopolymer_ml_pipeline.ipynb
-│   └── main_pipeline.py
-├── src/
-│   ├── data_process.py
-│   ├── model_train.py
-│   ├── data_augmentation.py
-│   ├── plotter.py
-│   └── save_utils.py
-└── results/
-    ├── augmentation_experiment.csv
-    └── (representative figures)
-=======
-# ml-prediction-geopolymer-concrete
-Personal ML implementation for fiber-reinforced geopolymer concrete prediction, SHAP interpretability, and LCA optimization (Journal of Cleaner Production, 2026, first-author)
->>>>>>> 89e24c2 (Initial commit)

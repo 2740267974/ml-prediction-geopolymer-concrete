@@ -1,18 +1,15 @@
-# ==============================
+﻿# ==============================
 # Python
 # ==============================
+__pycache__/
+*.py[codz]
+*.class
+
 .venv/
 venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# ==============================
-# IDE
-# ==============================
-.idea/
-.vscode/
+env/
+ENV/
+.env
 
 # ==============================
 # Jupyter
@@ -20,6 +17,12 @@ __pycache__/
 jupyter_runtime/
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
+
+# ==============================
+# IDE
+# ==============================
+.idea/
+.vscode/
 
 # ==============================
 # OS files
@@ -32,6 +35,18 @@ Thumbs.db
 # ==============================
 *.log
 
-# Ignore old generated result figures (keep representative ones only)
-results/MLP/MLP_202602*.png
-results/RF/RF_20260210_144411.png
+# ==============================
+# Results management (paper + job)
+# ==============================
+results/runs/
+
+results/**/*.png
+results/**/*.jpg
+results/**/*.jpeg
+!results/figures/
+!results/figures/**/*.png
+!results/figures/**/*.jpg
+!results/figures/**/*.jpeg
+
+!results/tables/
+!results/tables/**/*.csv

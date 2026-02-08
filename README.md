@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Machine Learning and GAN-Based Analysis of Fiber-Reinforced Geopolymer Concrete
 
 ## Overview
@@ -59,3 +60,7 @@ ml-prediction-geopolymer-concrete/
 └── results/
     ├── augmentation_experiment.csv
     └── (representative figures)
+=======
+# ml-prediction-geopolymer-concrete
+Personal ML implementation for fiber-reinforced geopolymer concrete prediction, SHAP interpretability, and LCA optimization (Journal of Cleaner Production, 2026, first-author)
+>>>>>>> 89e24c2 (Initial commit)

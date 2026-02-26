@@ -1,0 +1,37 @@
+# ==============================
+# Python
+# ==============================
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ==============================
+# IDE
+# ==============================
+.idea/
+.vscode/
+
+# ==============================
+# Jupyter
+# ==============================
+jupyter_runtime/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# ==============================
+# OS files
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Logs
+# ==============================
+*.log
+
+# Ignore old generated result figures (keep representative ones only)
+results/MLP/MLP_202602*.png
+results/RF/RF_20260210_144411.png

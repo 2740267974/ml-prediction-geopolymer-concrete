@@ -60,23 +60,11 @@ pip install -r requirements.txt
 ### Demo (Recommended First)
 
 ``` bash
-jupyter lab notebooks/demo_quick.ipynb
-```
-
-or
-
-``` bash
 jupyter notebook notebooks/demo_quick.ipynb
 ```
 
 
 ### Full Research Pipeline
-
-``` bash
-jupyter lab notebooks/research_full.ipynb
-```
-
-or
 
 ``` bash
 jupyter notebook notebooks/research_full.ipynb

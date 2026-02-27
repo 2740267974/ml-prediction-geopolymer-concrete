@@ -1,27 +1,105 @@
 # Machine Learning Prediction and SHAP Interpretability for Fiber-Reinforced Geopolymer Concrete
 
-**Personal implementation** of a complete machine learning pipeline for predicting compressive strength and optimizing the life-cycle environmental impact of sustainable fiber-reinforced geopolymer concrete.
+Personal implementation of a machine learning pipeline for predicting the compressive strength of fiber-reinforced geopolymer concrete, including tabular data augmentation (CTGAN / TVAE) and SHAP interpretability analysis.
 
-**Published Paper** (First-author contribution):  
-M. Zhang, P. Guo, X. Tan, W. Meng, Y. Bao, "Cradle-to-gate assessment and optimization of sustainable geopolymer concrete", *Journal of Cleaner Production* (2026).  
-DOI: [insert DOI when available, or write "In press"]
+---
 
-This repository contains **my independent implementation** of the following components:
-- Literature-based data collection and preprocessing (>2,300 data points on composition, fiber, and curing parameters)
-- Data augmentation using Conditional Tabular GAN (CTGAN)
-- LightGBM regression modeling achieving excellent predictive performance (RMSE < 3.0 MPa)
-- Comprehensive SHAP interpretability analysis (summary plots, dependence plots, force plots, and interaction analysis)
-- Life Cycle Assessment (LCA) optimization to identify low-carbon mix designs
+## Related Paper
 
-A small sample dataset is provided for demonstration and reproducibility. The full dataset is available in the paper's supplementary materials.
+M. Zhang, P. Guo, X. Tan, W. Meng, Y. Bao,  
+*Cradle-to-gate assessment and optimization of sustainable geopolymer concrete*,  
+**Journal of Cleaner Production**, 2026, 538: 147387.  
 
-## Key Results
-- High predictive accuracy: R² > 0.98, RMSE < 3.0 MPa on test set
-- SHAP analysis quantitatively revealed the most influential parameters and their interactions
-- LCA optimization identified environmentally superior geopolymer formulations
+DOI: https://doi.org/10.1016/j.jclepro.2025.147387  
+Link: https://www.sciencedirect.com/science/article/pii/S0959652625027441
 
-## Quick Start
-```bash
+> Note:  
+> This repository focuses on the machine learning prediction, data augmentation, and SHAP interpretability implementation.  
+> The Life Cycle Assessment (LCA) optimization part from the paper is not included in this codebase.
+
+---
+
+## Project Overview
+
+This repository includes:
+
+- Data preprocessing and train/test split
+- Baseline regression modeling (LightGBM / XGBoost depending on experiment)
+- Tabular data augmentation:
+  - CTGAN (Conditional Tabular GAN)
+  - TVAE (Tabular Variational Autoencoder)
+- SHAP interpretability analysis:
+  - SHAP summary plot (beeswarm)
+  - SHAP feature-wise scatter plots
+- Structured result saving:
+  - Figures → `results/figures/`
+  - Tables → `results/tables/`
+
+A small sample dataset is included for demonstration purposes.  
+The full dataset is available via the published paper and supplementary materials.
+
+---
+
+
+# Quick Start Guide
+
+This document explains how to run the project correctly.
+
+
+## 1. Install Dependencies
+
+Make sure you are in the project root directory:
+
+``` bash
 pip install -r requirements.txt
-jupyter lab notebooks/main_analysis.ipynb   # or jupyter notebook
+```
 
+
+## 2. Run the Notebooks
+
+### Demo (Recommended First)
+
+``` bash
+jupyter lab notebooks/demo_quick.ipynb
+```
+
+or
+
+``` bash
+jupyter notebook notebooks/demo_quick.ipynb
+```
+
+
+### Full Research Pipeline
+
+``` bash
+jupyter lab notebooks/research_full.ipynb
+```
+
+or
+
+``` bash
+jupyter notebook notebooks/research_full.ipynb
+```
+
+
+## 3. Expected Outputs
+
+After running the notebooks, the following files will be generated:
+
+``` text
+results/figures/baseline_pred.png
+results/figures/augmentation_rmse.png
+results/figures/shap_summary.png
+results/figures/shap_scatter/
+results/tables/augmentation_experiment.csv
+```
+
+
+## Notes
+
+-   Always start Jupyter from the project root directory.
+-   The demo notebook runs quickly and is recommended for first-time
+    users.
+-   The full research notebook includes data augmentation and SHAP
+    analysis.

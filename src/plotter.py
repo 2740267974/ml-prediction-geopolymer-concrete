@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import shap
 
 class DataPlotter:
     """
@@ -220,3 +220,205 @@ class DataPlotter:
             fig.savefig(save_path, bbox_inches="tight", dpi=300)
 
         return fig, ax
+
+
+    def plot_shap_summary(
+        self,
+        shap_values,
+        x_data: pd.DataFrame,
+        feature_names=None,
+        ylabel: str = "SHAP value (impact on model output)",
+        save_path: str = None
+    ):
+        """
+        SHAP summary (beeswarm) plot.
+
+        Parameters
+        ----------
+        shap_values : shap.Explanation
+            Output from shap.TreeExplainer(model)(X)
+        x_data : pd.DataFrame
+            Feature data used for SHAP
+        feature_names : list[str] or None
+            Optional custom labels
+        ylabel : str
+            X-axis label
+        save_path : str or None
+            If provided, save figure
+        """
+
+        # 自动提取特征名（优先 DataFrame）
+        if feature_names is None:
+            if isinstance(x_data, pd.DataFrame):
+                feature_names = list(x_data.columns)
+            else:
+                raise ValueError("feature_names must be provided if x_data is not a DataFrame.")
+
+        # 让 SHAP 先画图
+        plt.figure(figsize=(10, 8))
+        shap.summary_plot(
+            shap_values,
+            x_data,
+            feature_names=feature_names,
+            show=False
+        )
+
+        fig = plt.gcf()
+        ax = plt.gca()
+
+        # 字体设置
+        ax.set_xlabel(ylabel, fontsize=24)
+        ax.tick_params(axis="both", which="major", labelsize=20)
+
+        # 处理 colorbar（最后一个 axes）
+        if len(fig.axes) >= 2:
+            cbar_ax = fig.axes[-1]
+            cbar_ax.set_ylabel("Feature value", fontsize=20)
+            cbar_ax.tick_params(labelsize=18)
+
+        plt.subplots_adjust(left=0.25)
+
+        if save_path:
+            fig.savefig(save_path, bbox_inches="tight", dpi=300)
+
+        return fig, ax
+
+
+    def plot_shap_scatter_all(
+        self,
+        shap_values,
+        x_data: pd.DataFrame,
+        feature_names=None,
+        save_dir: str = None,
+        filename_prefix: str = "feature",
+        point_size: int = 50,
+    ):
+        """
+        Loop all features and save each scatter plot.
+        Returns list of saved file paths.
+        """
+
+        if feature_names is None:
+            if isinstance(x_data, pd.DataFrame):
+                feature_names = list(x_data.columns)
+            else:
+                # fallback: f0..fn
+                n_features = shap_values.values.shape[1]
+                feature_names = [f"f{i}" for i in range(n_features)]
+
+        saved = []
+        for i, name in enumerate(feature_names):
+            save_path = None
+            if save_dir is not None:
+                import os
+                os.makedirs(save_dir, exist_ok=True)
+                save_path = os.path.join(save_dir, f"{filename_prefix}_{i}_{name}.png")
+
+            fig, ax = self.plot_shap_scatter_one(
+                shap_values=shap_values,
+                x_data=x_data,
+                feature=i,
+                feature_names=feature_names,
+                point_size=point_size,
+                save_path=save_path
+            )
+            plt.close(fig)
+
+            if save_path is not None:
+                saved.append(save_path)
+
+        return saved
+    def plot_shap_scatter_one(
+        self,
+        shap_values,
+        x_data: pd.DataFrame,
+        feature: int | str,
+        feature_names=None,
+        xlabel: str = None,
+        ylabel: str = None,
+        point_size: int = 50,
+        remove_colorbar: bool = True,
+        save_path: str = None,
+    ):
+        """
+        Plot SHAP scatter for ONE feature.
+
+        feature: int index or str column name
+        shap_values: shap.Explanation
+        x_data: pd.DataFrame recommended (auto names)
+        """
+
+        import shap
+        import matplotlib
+
+        # -------- feature names: universal --------
+        if feature_names is None:
+            if isinstance(x_data, pd.DataFrame):
+                feature_names = list(x_data.columns)
+            else:
+                raise ValueError("x_data must be a DataFrame or you must provide feature_names.")
+
+        # -------- resolve feature index --------
+        if isinstance(feature, str):
+            if feature not in feature_names:
+                raise ValueError(f"Feature '{feature}' not found in feature_names.")
+            feature_index = feature_names.index(feature)
+            feature_name = feature
+        else:
+            feature_index = int(feature)
+            feature_name = feature_names[feature_index]
+
+        # -------- draw --------
+        plt.figure(figsize=(8, 8))
+        ax = plt.gca()
+
+        shap_values_for_feature = shap_values[:, feature_index]
+
+        shap.plots.scatter(
+            shap_values_for_feature,
+            color=shap_values.data[:, feature_index],
+            hist=False,
+            ax=ax,
+            show=False
+        )
+
+        # enlarge point size
+        for collection in ax.collections:
+            if isinstance(collection, matplotlib.collections.PathCollection):
+                collection.set_sizes([point_size])
+
+        # remove colorbar if needed
+        if remove_colorbar:
+            for collection in getattr(ax, "collections", []):
+                if hasattr(collection, "colorbar") and collection.colorbar is not None:
+                    collection.colorbar.remove()
+
+        # 0-line
+        ax.axhline(0, color="black", linewidth=1, linestyle="--")
+
+        # spines thickness
+        for s in ["top", "right", "bottom", "left"]:
+            ax.spines[s].set_visible(True)
+            ax.spines[s].set_linewidth(2)
+
+        # ticks
+        ax.tick_params(axis="both", which="major", labelsize=30)
+
+        # labels
+        if xlabel is None:
+            xlabel = feature_name
+        if ylabel is None:
+            ylabel = f"SHAP value for {feature_name}"
+
+        ax.set_xlabel(xlabel, fontsize=36)
+        ax.set_ylabel(ylabel, fontsize=36)
+
+        fig = plt.gcf()
+
+        if save_path:
+            import os
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            fig.savefig(save_path, dpi=300, bbox_inches="tight")
+
+        return fig, ax
+

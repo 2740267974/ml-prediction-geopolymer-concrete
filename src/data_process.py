@@ -1,72 +1,45 @@
 # src/data_process.py
-import os
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
+from src.config import N_FEATURES, TARGET_COLUMN
 
 class DataHandler:
-    """
-    DataHandler is responsible for:
-    1) Loading raw data from Excel / CSV files
-    2) Converting all columns to numeric values
-    3) Extracting features (X) and target (y) according to predefined rules
 
-    This class follows the original preprocessing logic used in your experiments:
-    - Features: first n_features columns
-    - Target: last column
-    """
+    def __init__(
+        self,
+        data_path: str | Path,
+        n_features: int = N_FEATURES,
+        target_column: str = TARGET_COLUMN,
+    ):
 
-    def __init__(self, data_path: str, n_features: int = 16):
-        """
-        Parameters
-        ----------
-        data_path : str
-            Path to the dataset file (Excel or CSV).
-        n_features : int, default=16
-            Number of feature columns. The first n_features columns are treated as input features.
-        """
+        self.data_path = Path(data_path)
 
-        # Path to the raw dataset
-        self.data_path = data_path
-
-        # Number of feature columns
         self.n_features = n_features
+        self.expected_target_column = target_column
 
-        # Pandas DataFrame (useful for statistics and visualization)
-        self.data_df = None
+        self.data_df: pd.DataFrame | None = None
+        self.data: np.ndarray | None = None
 
-        # Numpy array version of the dataset
-        self.data = None
+        self.X: np.ndarray | None = None
+        self.y: np.ndarray | None = None
 
-        # Features (X) and target (y)
-        self.a = None
-        self.b = None
+        # Backward-compatible aliases used by existing notebooks.
+        self.a: np.ndarray | None = None
+        self.b: np.ndarray | None = None
 
-    def load_data(self):
-        """
-        Load and preprocess the dataset.
+        self.feature_names: list[str] = []
+        self.target_name: str | None = None
+        self.n_missing_or_non_numeric_filled: int = 0
 
-        Steps:
-        1) Check whether the data file exists
-        2) Read Excel or CSV file
-        3) Convert all columns to numeric values (non-numeric values are set to NaN and filled with 0)
-        4) Convert DataFrame to NumPy array
-        5) Extract features and target
+    def load_data(self) -> tuple[np.ndarray, np.ndarray]:
 
-        Returns
-        -------
-        a : numpy.ndarray
-            Feature matrix (X)
-        b : numpy.ndarray
-            Target vector (y)
-        """
-
-        # Step 0: Check file existence
-        if not os.path.exists(self.data_path):
+        if not self.data_path.exists():
             raise FileNotFoundError(f"Data file not found: {self.data_path}")
 
-        # Step 1: Read data file
-        ext = os.path.splitext(self.data_path)[1].lower()
+        ext = self.data_path.suffix.lower()
         if ext in [".xlsx", ".xls"]:
             data = pd.read_excel(self.data_path)
         elif ext == ".csv":
@@ -74,46 +47,65 @@ class DataHandler:
         else:
             raise ValueError("Unsupported file format. Only .xlsx, .xls and .csv are supported.")
 
-        # Step 2: Convert all columns to numeric and fill missing values with 0
-        for col in data.columns:
-            data[col] = pd.to_numeric(data[col], errors="coerce").fillna(0)
+        self._validate_columns(data)
 
-        # Save DataFrame version for potential analysis or visualization
-        self.data_df = data
+        numeric_data = data.apply(pd.to_numeric, errors="coerce")
+        self.n_missing_or_non_numeric_filled = int(numeric_data.isna().sum().sum())
+        numeric_data = numeric_data.fillna(0)
 
-        # Step 3: Convert DataFrame to NumPy array
-        self.data = data.to_numpy(dtype=float)
+        self.data_df = numeric_data
+        self.data = numeric_data.to_numpy(dtype=float)
 
-        # Step 4: Extract features and target
-        # Features: first n_features columns
-        # Target: last column
-        if self.data.shape[1] < self.n_features + 1:
+        self.feature_names = list(numeric_data.columns[: self.n_features])
+        self.target_name = str(numeric_data.columns[-1])
+
+        self.X = self.data[:, : self.n_features]
+        self.y = self.data[:, -1]
+
+        self.a = self.X
+        self.b = self.y
+
+        return self.X, self.y
+
+    def get_features_and_target(self) -> tuple[np.ndarray, np.ndarray]:
+
+        if self.X is None or self.y is None:
+            raise RuntimeError("Data has not been loaded. Please call load_data() first.")
+
+        return self.X, self.y
+
+    def get_summary(self) -> dict[str, object]:
+        """
+        Return a compact summary of the loaded dataset.
+        """
+        if self.data_df is None or self.X is None or self.y is None:
+            raise RuntimeError("Data has not been loaded. Please call load_data() first.")
+
+        return {
+            "data_path": str(self.data_path),
+            "n_samples": int(self.X.shape[0]),
+            "n_features": int(self.X.shape[1]),
+            "feature_names": self.feature_names,
+            "target_name": self.target_name,
+            "n_missing_or_non_numeric_filled": self.n_missing_or_non_numeric_filled,
+        }
+
+    def _validate_columns(self, data: pd.DataFrame) -> None:
+        """
+        Validate that the dataset has enough columns and the expected target.
+        """
+        expected_min_cols = self.n_features + 1
+        if data.shape[1] < expected_min_cols:
             raise ValueError(
                 f"Insufficient number of columns in the dataset. "
-                f"Found {self.data.shape[1]} columns, but expected at least {self.n_features + 1} "
+                f"Found {data.shape[1]} columns, but expected at least {expected_min_cols} "
                 f"(features + target)."
             )
 
-        self.a = self.data[:, :self.n_features]
-        self.b = self.data[:, -1]
-
-        return self.a, self.b
-
-    def get_features_and_target(self):
-        """
-        Return features and target after data loading.
-
-        This method ensures that load_data() has been called before accessing the data.
-
-        Returns
-        -------
-        a : numpy.ndarray
-            Feature matrix (X)
-        b : numpy.ndarray
-            Target vector (y)
-        """
-
-        if self.a is None or self.b is None:
-            raise RuntimeError("Data has not been loaded. Please call load_data() first.")
-
-        return self.a, self.b
+        actual_target = str(data.columns[-1])
+        if self.expected_target_column and actual_target != self.expected_target_column:
+            raise ValueError(
+                f"Unexpected target column. Expected last column '{self.expected_target_column}', "
+                f"but found '{actual_target}'."
+            )
+        

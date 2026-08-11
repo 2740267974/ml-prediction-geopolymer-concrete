@@ -1,11 +1,8 @@
-# src/shap.py
+# src/shap_analysis.py
 import shap
 
-
 def _is_tree_model(model) -> bool:
-    """
-    Heuristic check for tree-based models (LightGBM / XGBoost / CatBoost / sklearn trees).
-    """
+
     name = model.__class__.__name__.lower()
     module = model.__class__.__module__.lower()
 
@@ -32,7 +29,7 @@ def _is_tree_model(model) -> bool:
     if hasattr(model, "predict") and (hasattr(model, "trees_") or hasattr(model, "booster_")):
         return True
 
-    return False
+    return False  
 
 
 def compute_shap_values(model, x_data, x_background=None, check_additivity: bool = False):

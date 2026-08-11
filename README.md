@@ -1,93 +1,138 @@
-# Machine Learning Prediction and SHAP Interpretability for Fiber-Reinforced Geopolymer Concrete
+# Geopolymer Concrete ML Pipeline
 
-Personal implementation of a machine learning pipeline for predicting the compressive strength of fiber-reinforced geopolymer concrete, including tabular data augmentation (CTGAN / TVAE) and SHAP interpretability analysis.
-
----
+Machine learning pipeline for predicting the compressive strength of
+fiber-reinforced geopolymer concrete from mix-design, fiber, and curing
+parameters. The project includes baseline regression models, tabular data
+augmentation with CTGAN/TVAE/custom GAN, SHAP interpretation, and organized
+result generation.
 
 ## Related Paper
 
 M. Zhang, P. Guo, X. Tan, W. Meng, Y. Bao,  
 *Cradle-to-gate assessment and optimization of sustainable geopolymer concrete*,  
-**Journal of Cleaner Production**, 2026, 538: 147387.  
+**Journal of Cleaner Production**, 2026, 538: 147387.
 
 DOI: https://doi.org/10.1016/j.jclepro.2025.147387  
 Link: https://www.sciencedirect.com/science/article/pii/S0959652625027441
 
-> Note:  
-> This repository focuses on the machine learning prediction, data augmentation, and SHAP interpretability implementation.  
-> The Life Cycle Assessment (LCA) optimization part from the paper is not included in this codebase.
-
----
+This repository focuses on the machine learning prediction, data augmentation,
+and SHAP interpretability workflow. The Life Cycle Assessment optimization part
+from the paper is not included in this codebase.
 
 ## Project Overview
 
-This repository includes:
+Implemented workflow:
 
-- Data preprocessing and train/test split
-- Baseline regression modeling (LightGBM / XGBoost depending on experiment)
+- Data loading and numeric preprocessing
+- Train/test split with shared configuration
+- Baseline prediction with XGBoost
 - Tabular data augmentation:
-  - CTGAN (Conditional Tabular GAN)
-  - TVAE (Tabular Variational Autoencoder)
-- SHAP interpretability analysis:
-  - SHAP summary plot (beeswarm)
-  - SHAP feature-wise scatter plots
-- Structured result saving:
-  - Figures → `results/figures/`
-  - Tables → `results/tables/`
+  - CTGAN
+  - TVAE
+  - Custom PyTorch GAN
+- Synthetic-data filtering with a pretrained baseline model
+- Augmentation-ratio experiment with LightGBM
+- GAN loss visualization
+- SHAP summary and scatter plots
+- Result saving under `results/`
 
-A small sample dataset is included for demonstration purposes.  
-The full dataset is available via the published paper and supplementary materials.
+Implemented prediction model utilities include:
 
----
+- Linear Regression
+- Decision Tree
+- Random Forest
+- sklearn MLP baseline
+- XGBoost
+- LightGBM
 
+## Quick Start
 
-# Quick Start Guide
+Install dependencies from the project root:
 
-This document explains how to run the project correctly.
-
-
-## 1. Install Dependencies
-
-Make sure you are in the project root directory:
-
-``` bash
+```bash
 pip install -r requirements.txt
 ```
 
+Run the main notebook:
 
-## 2. Run the Notebooks
-
-### Demo (Recommended First)
-
-``` bash
-jupyter notebook notebooks/demo_quick.ipynb
+```bash
+jupyter lab notebooks/main_pipeline.ipynb
 ```
 
+The notebook is organized as:
 
-### Full Research Pipeline
+1. Project setup and experiment parameters
+2. Data loading and train/test split
+3. Baseline XGBoost model
+4. Custom GAN / synthesizer training
+5. GAN loss curve
+6. Synthetic data generation and filtering
+7. Augmentation experiment
+8. SHAP summary plot
+9. SHAP scatter plot
 
-``` bash
-jupyter notebook notebooks/research_full.ipynb
+## Data Format
+
+The current public data file contains 2,307 rows, 16 input features, and one
+target column.
+
+The loader uses the first 16 columns as features and the last column as the
+target. The expected target column is:
+
+```text
+Com
 ```
 
+Current columns:
 
-## 3. Expected Outputs
+| Column | Meaning |
+| --- | --- |
+| FA | Source column preserved from the dataset |
+| GGBS | Ground granulated blast-furnace slag |
+| SF | Silica fume |
+| MK | Metakaolin |
+| FA.1 | Source column preserved from the dataset |
+| CA | Coarse aggregate |
+| Molarity | Alkali activator molarity |
+| NaOH | Sodium hydroxide content |
+| Na2SiO3 | Sodium silicate content |
+| Water | Water content |
+| F_V (vol%) | Fiber volume fraction |
+| F_D | Fiber diameter |
+| F_L | Fiber length |
+| F_M | Fiber modulus |
+| days | Curing age |
+| Tem | Curing temperature |
+| Com | Compressive strength target, MPa |
 
-After running the notebooks, the following files will be generated:
+Before using the table in formal writing, verify ambiguous abbreviations and
+units such as `FA` and `FA.1` against the original data source.
 
-``` text
-results/figures/baseline_pred.png
-results/figures/augmentation_rmse.png
-results/figures/shap_summary.png
-results/figures/shap_scatter/
-results/tables/augmentation_experiment.csv
+## Repository Layout
+
+```text
+data/                         Raw CSV/XLSX data
+notebooks/main_pipeline.ipynb Main experiment notebook
+src/config.py                 Project-level configuration constants
+src/data_process.py           Data loading and numeric preprocessing
+src/model_train.py            Regression models and metrics
+src/data_augmentation.py      Synthetic data generation/filtering workflow
+src/synthesizers.py           CTGAN/TVAE/custom GAN synthesizer factory
+src/shap_analysis.py          SHAP value computation helpers
+src/plotter.py                Plotting utilities
+results/                      Generated tables and figures
 ```
 
+## Outputs
 
-## Notes
+Typical generated outputs include:
 
--   Always start Jupyter from the project root directory.
--   The demo notebook runs quickly and is recommended for first-time
-    users.
--   The full research notebook includes data augmentation and SHAP
-    analysis.
+```text
+results/figures/prediction/
+results/figures/augmentation/
+results/figures/shap/
+results/figures/shap/scatter/
+results/tables/
+```
+
+Generated file names include timestamps to avoid overwriting previous runs.

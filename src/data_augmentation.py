@@ -1,19 +1,20 @@
 import pandas as pd
 import numpy as np
 import time
-from sdv.single_table import CTGANSynthesizer, TVAESynthesizer
 from sdv.metadata import SingleTableMetadata
 from sklearn.model_selection import train_test_split
 import lightgbm as lgb
 from typing import Optional, Dict, List
+from src.config import RANDOM_STATE, TARGET_COLUMN, TEST_SIZE
 from src.model_train import compute_metrics
+from src.synthesizers import build_synthesizer
 
 
 class DataAugmentor:
     """
     数据增强器：实现 Type II（非监督）数据增强，并应用论文中的误差过滤机制。
-    - CTGAN 同时生成特征和 target。
-    - 使用一个基线模型（baseline_model）来预测 CTGAN 生成的特征，与 CTGAN 生成的 target 进行对比，
+    - 生成模型同时生成特征和 target。
+    - 使用一个基线模型（baseline_model）来预测生成特征，与生成 target 进行对比，
       根据预测误差（error < 0.03 * y_pred）筛选高质量数据。
     """
 
@@ -21,6 +22,7 @@ class DataAugmentor:
         self.baseline_model = baseline_model  # 用于过滤的预训练基线模型
         self.generator = None
         self.metadata = None
+        self.generator_method = None
 
     def fit_generator(
             self,
@@ -32,27 +34,23 @@ class DataAugmentor:
             **kwargs
     ):
         """在完整的 DataFrame (特征 + target) 上训练生成模型"""
+        method_key = method.upper()
+        build_kwargs = dict(kwargs)
+        if method_key in {"CUSTOM_GAN", "CUSTOMGAN", "GAN"} and "verbose" not in build_kwargs:
+            build_kwargs["verbose"] = verbose
+
         self.metadata = SingleTableMetadata()
         self.metadata.detect_from_dataframe(full_df)  # <--- detect from full_df
 
-        if method == "CTGAN":
-            self.generator = CTGANSynthesizer(
-                self.metadata,
-                epochs=epochs,
-                batch_size=batch_size,
-                cuda=True,
-                **kwargs
-            )
-        elif method == "TVAE":
-            self.generator = TVAESynthesizer(
-                self.metadata,
-                epochs=epochs,
-                batch_size=batch_size,
-                cuda=True,
-                **kwargs
-            )
-        else:
-            raise ValueError("method 只能是 CTGAN 或 TVAE")
+        self.generator = build_synthesizer(
+            method,
+            self.metadata,
+            epochs=epochs,
+            batch_size=batch_size,
+            cuda=True,
+            **build_kwargs
+        )
+        self.generator_method = method_key
 
         if verbose:
             print(f"开始训练 {method} 生成模型（epochs={epochs}）on full data...")
@@ -69,20 +67,17 @@ class DataAugmentor:
     def generate_and_predict(
             self,
             initial_samples: int = 10000,
-            n_original: int = None,
-            target_col: str = 'Target'
+            target_col: str = TARGET_COLUMN
     ) -> pd.DataFrame:
         """
         生成初始数据 (特征 + target) -> 应用论文后处理/过滤 (round, 负值置0, Feature_11约束) ->
-        应用误差过滤 (CTGAN target vs. baseline pred) -> 随机选 n_original 条作为 syn_data
+        应用误差过滤 (generated target vs. baseline pred) -> 返回所有通过筛选的 syn_data
         """
         if self.generator is None:
             raise RuntimeError("请先调用 fit_generator 训练生成模型")
-        if n_original is None:
-            raise ValueError("必须提供 n_original (原数据量)")
 
-        print(f"CTGAN 生成 {initial_samples} 条初始合成数据 (特征 + target)...")
-        syn_raw_df = self.generator.sample(num_rows=initial_samples)  # CTGAN 生成包含 target 的数据
+        print(f"{self.generator_method} 生成 {initial_samples} 条初始合成数据 (特征 + target)...")
+        syn_raw_df = self.generator.sample(num_rows=initial_samples)
 
         # ===============================================
         # 1. 论文通用后处理 (round, 负值置0) - 作用于所有列
@@ -106,17 +101,17 @@ class DataAugmentor:
             print(f"警告: 列 '{'Feature_11'}' 不存在，跳过 Feature_11 相关约束。请检查列名是否与原始数据匹配。")
 
         # ===============================================
-        # 3. 误差过滤 (CTGAN 生成 target vs. baseline 预测 target)
+        # 3. 误差过滤 (生成 target vs. baseline 预测 target)
         #    这是你提供的代码片段中的核心过滤逻辑
         # ===============================================
-        x_ctgan = syn_raw_df.drop(target_col, axis=1).values  # CTGAN 生成的特征
-        y_ctgan = syn_raw_df[target_col].values  # CTGAN 生成的 target
+        x_generated = syn_raw_df.drop(target_col, axis=1).values
+        y_generated = syn_raw_df[target_col].values
 
-        # 使用基线模型对 CTGAN 生成的特征进行预测
-        y_pred_baseline = self.baseline_model.predict(x_ctgan)
+        # 使用基线模型对生成特征进行预测
+        y_pred_baseline = self.baseline_model.predict(x_generated)
 
         # 计算误差
-        error = np.abs(y_ctgan - y_pred_baseline)
+        error = np.abs(y_generated - y_pred_baseline)
 
         # 筛选条件：误差小于 3% 的基线预测值
         initial_len = len(syn_raw_df)
@@ -138,21 +133,13 @@ class DataAugmentor:
         n_filtered = len(syn_data_final)
         print(f"最终过滤后剩余 {n_filtered} 条高质量合成数据 (总通过率: {n_filtered / initial_samples:.2%})")
 
-        # 从最终过滤后的数据中随机选 n_original 条作为 syn_data（如果不足，用所有）
-        if n_filtered >= n_original:
-            syn_data_to_return = syn_data_final.sample(n=n_original, random_state=42)
-            print(f"从过滤池中随机选 {n_original} 条作为 syn_data")
-        else:
-            syn_data_to_return = syn_data_final
-            print(f"警告: 过滤后只有 {n_filtered} 条 < {n_original}，使用所有作为 syn_data")
-
-        return syn_data_to_return
+        return syn_data_final
 
     def run_augmentation_experiment(
             self,
             original_df: pd.DataFrame,
             ratios: List[float] = None,
-            target_col: str = 'Target',
+            target_col: str = TARGET_COLUMN,
             lgb_params: Optional[Dict] = None,
             syn_data: Optional[pd.DataFrame] = None,
             initial_samples: int = 10000
@@ -179,7 +166,6 @@ class DataAugmentor:
             print("\n未提供 syn_data，内部生成 (特征 + target)...")
             syn_data = self.generate_and_predict(
                 initial_samples=initial_samples,
-                n_original=n_original,
                 target_col=target_col
             )
         else:
@@ -198,7 +184,7 @@ class DataAugmentor:
                     print(f"警告: 所需 {n_target} 条 > syn_data 池大小 {len(syn_data)}，使用所有")
                     syn_df = syn_data.copy()
                 else:
-                    syn_df = syn_data.sample(n=n_target, random_state=42)
+                    syn_df = syn_data.sample(n=n_target, random_state=RANDOM_STATE)
                 n_synthetic_actual = len(syn_df)
                 aug_df = pd.concat([original_df, syn_df], ignore_index=True)
 
@@ -206,7 +192,7 @@ class DataAugmentor:
             X_aug = aug_df.drop(target_col, axis=1).values
             y_aug = aug_df[target_col].values
             x_train, x_test, y_train, y_test = train_test_split(
-                X_aug, y_aug, test_size=0.2, random_state=42
+                X_aug, y_aug, test_size=TEST_SIZE, random_state=RANDOM_STATE
             )
 
             # 重训 LightGBM

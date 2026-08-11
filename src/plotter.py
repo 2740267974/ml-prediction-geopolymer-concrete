@@ -68,15 +68,12 @@ class DataPlotter:
         # ✅ CHANGED: return fig for saving
         return fig, ax
 
-    def plot_augmentation_results(self, results_df: pd.DataFrame, ylabel: str = "RMSE (eV/atom)",
+    def plot_augmentation_results(self, results_df: pd.DataFrame, ylabel: str = "RMSE (MPa)",
                                   save_path: str = None):
         """
         绘制生成模型数据增强效果图（augmentation ratio vs RMSE）
         results_df 必须包含列：'Augmentation_ratio', 'Model', 'RMSE'
         """
-        import pandas as pd
-        import matplotlib.pyplot as plt
-
         # 确保数值类型
         results_df['RMSE'] = pd.to_numeric(results_df['RMSE'], errors='coerce')
         results_df['Augmentation_ratio'] = results_df['Augmentation_ratio'] * 100  # 转为百分比
@@ -147,6 +144,7 @@ class DataPlotter:
             ratio_col: str = "ratio",
             rmse_col: str = "test_rmse",
             ylabel: str = "RMSE (MPa)",
+            label: str = "Augmentation",
             save_path: str = None
     ):
         """
@@ -179,8 +177,7 @@ class DataPlotter:
 
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        # main scatter (pink like CTGAN in your example)
-        ax.scatter(x, y, s=60, alpha=0.8, color="#f781bf", label="CTGAN")
+        ax.scatter(x, y, s=60, alpha=0.8, color="#f781bf", label=label)
 
         # baseline black point
         if baseline_val is not None:

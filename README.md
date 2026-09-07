@@ -12,7 +12,7 @@ GAN-based tabular data augmentation, and SHAP-based model interpretation.
 
 ## Related Paper
 
-M. Zhang, P. Guo, X. Tan, W. Meng, Y. Bao,  
+M. Zhang, P. Guo, X. Tan, J. Du, W. Meng, Y. Bao,\
 *Cradle-to-gate assessment and optimization of sustainable geopolymer concrete*,  
 **Journal of Cleaner Production**, 2026, 538: 147387.
 
@@ -38,6 +38,11 @@ Implemented workflow:
 - GAN loss visualization
 - SHAP summary and scatter plots
 - Result saving under `results/`
+
+CTGAN, TVAE, and the Custom PyTorch GAN are implemented. The supplied
+`main_pipeline.ipynb` is configured for `CUSTOM_GAN`, including its loss-history
+plotting. Using CTGAN or TVAE may require model-specific training settings and
+corresponding adjustments to loss visualization.
 
 Implemented prediction model utilities include:
 
@@ -135,4 +140,6 @@ results/figures/shap/scatter/
 results/tables/
 ```
 
-Generated file names include timestamps to avoid overwriting previous runs.
+The main notebook uses a run timestamp in generated result filenames to organize
+experiment outputs. Reusing the same run identifier or using standalone scripts
+with fixed filenames may overwrite existing files.

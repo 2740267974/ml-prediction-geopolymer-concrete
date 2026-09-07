@@ -53,6 +53,17 @@ Implemented prediction model utilities include:
 - XGBoost
 - LightGBM
 
+## Example Result
+
+The following SHAP summary illustrates the global feature contributions to the
+saved compressive-strength prediction model.
+
+![SHAP summary of the saved compressive-strength model](results/figures/shap/shap_summary_20260811_233420.png)
+
+*SHAP summary of the saved compressive-strength model. GGBS content and curing
+age show the largest overall contributions to model predictions. Feature color
+indicates lower-to-higher feature values.*
+
 ## Quick Start
 
 Install dependencies from the project root:

@@ -1,10 +1,14 @@
 # Geopolymer Concrete ML Pipeline
 
-Machine learning pipeline for predicting the compressive strength of
-fiber-reinforced geopolymer concrete from mix-design, fiber, and curing
-parameters. The project includes baseline regression models, tabular data
-augmentation with CTGAN/TVAE/custom GAN, SHAP interpretation, and organized
-result generation.
+**Machine Learning • Deep Learning • Generative Data Augmentation • SHAP Interpretability**
+
+A research-oriented machine learning pipeline for predicting the compressive
+strength of fiber-reinforced geopolymer concrete from mix-design, fiber, and
+curing parameters.
+
+This repository contains the computational workflow developed for my
+first-author research project, including regression modeling, neural networks,
+GAN-based tabular data augmentation, and SHAP-based model interpretation.
 
 ## Related Paper
 
@@ -15,9 +19,8 @@ M. Zhang, P. Guo, X. Tan, W. Meng, Y. Bao,
 DOI: https://doi.org/10.1016/j.jclepro.2025.147387  
 Link: https://www.sciencedirect.com/science/article/pii/S0959652625027441
 
-This repository focuses on the machine learning prediction, data augmentation,
-and SHAP interpretability workflow. The Life Cycle Assessment optimization part
-from the paper is not included in this codebase.
+> This repository focuses on the machine learning prediction, data augmentation,
+> and SHAP interpretability components of the study.
 
 ## Project Overview
 
@@ -87,11 +90,11 @@ Current columns:
 
 | Column | Meaning |
 | --- | --- |
-| FA | Source column preserved from the dataset |
+| FA | Fly ash content |
 | GGBS | Ground granulated blast-furnace slag |
 | SF | Silica fume |
 | MK | Metakaolin |
-| FA.1 | Source column preserved from the dataset |
+| FA.1 | Fine aggregate content |
 | CA | Coarse aggregate |
 | Molarity | Alkali activator molarity |
 | NaOH | Sodium hydroxide content |
@@ -104,9 +107,6 @@ Current columns:
 | days | Curing age |
 | Tem | Curing temperature |
 | Com | Compressive strength target, MPa |
-
-Before using the table in formal writing, verify ambiguous abbreviations and
-units such as `FA` and `FA.1` against the original data source.
 
 ## Repository Layout
 

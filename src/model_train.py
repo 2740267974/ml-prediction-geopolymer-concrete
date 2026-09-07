@@ -79,6 +79,8 @@ class TrainResult:
     metrics: Dict[str, Dict[str, float]]
 
     params: Optional[Dict[str, Any]] = None
+    # Stores the requested round-count argument passed to train_lightgbm.
+    # LightGBM iteration settings in params can override this argument.
     num_boost_round: Optional[int] = None
     y_train_true: np.ndarray | None = None
     y_test_true: np.ndarray | None = None

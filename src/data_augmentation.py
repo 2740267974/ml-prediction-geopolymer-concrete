@@ -71,8 +71,10 @@ class DataAugmentor:
         """
         Generate and return a filtered DataFrame of synthetic features and targets.
 
-        Round values, clip negatives, enforce Feature_11 constraints, and retain
+        Round values, clip negatives, enforce fiber constraints, and retain
         samples with positive targets that pass baseline prediction filtering.
+        Fiber constraints support the complete Feature_11–Feature_14 column set
+        or F_V (vol%), F_D, F_L, and F_M, with legacy names taking precedence.
         """
         if self.generator is None:
             raise RuntimeError("请先调用 fit_generator 训练生成模型")
@@ -85,14 +87,28 @@ class DataAugmentor:
         syn_raw_df = syn_raw_df.round(3)
         syn_raw_df[syn_raw_df < 0] = 0
 
-        # Enforce consistency between Feature_11 and its dependent features.
-        if 'Feature_11' in syn_raw_df.columns:
-            syn_raw_df.loc[syn_raw_df['Feature_11'] == 0, ['Feature_12', 'Feature_13', 'Feature_14']] = 0
-            # Exclude nonzero Feature_11 values with zero-valued dependent features.
-            syn_raw_df = syn_raw_df[~((syn_raw_df['Feature_11'] != 0) &
-                                      ((syn_raw_df['Feature_12'] == 0) | (syn_raw_df['Feature_13'] == 0) | (
-                                                  syn_raw_df['Feature_14'] == 0)))]
-            print("应用了 Feature_11 相关约束")
+        fiber_column_aliases = {
+            "Feature_11": "F_V (vol%)",
+            "Feature_12": "F_D",
+            "Feature_13": "F_L",
+            "Feature_14": "F_M",
+        }
+        fiber_columns = next(
+            (columns for columns in (
+                tuple(fiber_column_aliases), tuple(fiber_column_aliases.values())
+            ) if all(column in syn_raw_df.columns for column in columns)),
+            None,
+        )
+
+        # Enforce consistency between fiber volume and its dependent features.
+        if fiber_columns is not None:
+            volume_col, diameter_col, length_col, modulus_col = fiber_columns
+            syn_raw_df.loc[syn_raw_df[volume_col] == 0, [diameter_col, length_col, modulus_col]] = 0
+            # Exclude nonzero fiber volumes with zero-valued dependent features.
+            syn_raw_df = syn_raw_df[~((syn_raw_df[volume_col] != 0) &
+                                      ((syn_raw_df[diameter_col] == 0) | (syn_raw_df[length_col] == 0) | (
+                                                  syn_raw_df[modulus_col] == 0)))]
+            print(f"应用了 {volume_col} 相关约束")
         else:
             print(f"警告: 列 '{'Feature_11'}' 不存在，跳过 Feature_11 相关约束。请检查列名是否与原始数据匹配。")
 

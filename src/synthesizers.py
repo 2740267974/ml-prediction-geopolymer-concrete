@@ -99,6 +99,7 @@ class CustomTabularGANSynthesizer:
         batch_size: int = 64,
         learning_rate: float = 2e-4,
         random_state: int = RANDOM_STATE,
+        cuda: bool = True,
         device: str | None = None,
         verbose: bool = True,
     ):
@@ -110,6 +111,7 @@ class CustomTabularGANSynthesizer:
         self.batch_size = int(batch_size)
         self.learning_rate = float(learning_rate)
         self.random_state = int(random_state)
+        self.cuda = cuda
         self.device = device
         self.verbose = bool(verbose)
 
@@ -119,6 +121,15 @@ class CustomTabularGANSynthesizer:
         self.generator = None
         self.discriminator = None
         self.loss_history: dict[str, list[float]] = {"generator": [], "discriminator": []}
+
+    def _resolve_device(self):
+        """Prefer an explicit device, then the CUDA flag, with a CPU fallback."""
+        device = torch.device(
+            self.device if self.device is not None else ("cuda" if self.cuda else "cpu")
+        )
+        if device.type == "cuda" and not torch.cuda.is_available():
+            return torch.device("cpu")
+        return device
 
     def fit(self, full_df: pd.DataFrame):
         if torch is None or DataLoader is None or TensorDataset is None:
@@ -132,8 +143,11 @@ class CustomTabularGANSynthesizer:
         self.scaler = StandardScaler()
         train_scaled = self.scaler.fit_transform(train_array).astype(np.float32)
 
-        selected_device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
-        torch_device = torch.device(selected_device)
+        torch_device = self._resolve_device()
+
+        torch.manual_seed(self.random_state)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(self.random_state)
 
         self.generator = TabularGenerator(
             noise_dim=self.noise_dim,
@@ -146,10 +160,6 @@ class CustomTabularGANSynthesizer:
             hidden_dims=self.discriminator_hidden_dims,
             dropout=self.dropout,
         ).to(torch_device)
-
-        torch.manual_seed(self.random_state)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(self.random_state)
 
         train_tensor = torch.as_tensor(train_scaled, dtype=torch.float32)
         train_dataset = TensorDataset(train_tensor)
@@ -235,8 +245,7 @@ class CustomTabularGANSynthesizer:
         if self.generator is None or self.scaler is None or self.output_dim is None:
             raise RuntimeError("Please call fit() before sample().")
 
-        selected_device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
-        torch_device = torch.device(selected_device)
+        torch_device = self._resolve_device()
 
         self.generator.eval()
         with torch.no_grad():
@@ -280,6 +289,7 @@ def build_synthesizer(
         return CustomTabularGANSynthesizer(
             epochs=epochs,
             batch_size=batch_size,
+            cuda=cuda,
             **kwargs,
         )
 

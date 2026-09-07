@@ -48,8 +48,8 @@ class DataPlotter:
 
         # Draw markers alongside the metric annotations.
         ax.plot([max_val * 0.03, max_val * 0.13], [max_val * 0.965, max_val * 0.965], "k--", lw=1)
-        ax.scatter(max_val * 0.08, max_val * 0.885, edgecolor="red", facecolors="none", marker="o", s=25)
-        ax.scatter(max_val * 0.08, max_val * 0.805, edgecolor="blue", facecolors="none", marker="o", s=25)
+        ax.scatter(max_val * 0.08, max_val * 0.885, edgecolor="blue", facecolors="none", marker="o", s=25)
+        ax.scatter(max_val * 0.08, max_val * 0.805, edgecolor="red", facecolors="none", marker="o", s=25)
 
         ax.tick_params(labelsize=24)
         ax.set_xlabel("Actual compressive strength (MPa)", fontsize=24)

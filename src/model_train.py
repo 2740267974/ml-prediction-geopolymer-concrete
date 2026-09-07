@@ -28,7 +28,11 @@ __all__ = [
     'train_lightgbm',
 ]
 
-def r2_like_yours(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+def compute_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """
+    Compute the coefficient of determination (R²) from mean squared error
+    and total sum of squares.
+    """
     y_true = np.asarray(y_true).reshape(-1)
     y_pred = np.asarray(y_pred).reshape(-1)
 
@@ -44,7 +48,9 @@ def r2_like_yours(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-
+    """
+    Compute regression metrics using flattened one-dimensional target arrays.
+    """
     y_true = np.asarray(y_true).reshape(-1)
     y_pred = np.asarray(y_pred).reshape(-1)
 
@@ -53,7 +59,7 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     rmse = float(np.sqrt(mse))
     mape = mean_absolute_percentage_error(y_true, y_pred)
 
-    r2 = r2_like_yours(y_true, y_pred)
+    r2 = compute_r2(y_true, y_pred)
 
     return {
         "mae": float(mae),

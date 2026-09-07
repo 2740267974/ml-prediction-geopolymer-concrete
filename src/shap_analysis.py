@@ -1,4 +1,3 @@
-# src/shap_analysis.py
 import shap
 
 def _is_tree_model(model) -> bool:
@@ -6,26 +5,22 @@ def _is_tree_model(model) -> bool:
     name = model.__class__.__name__.lower()
     module = model.__class__.__module__.lower()
 
-    # LightGBM native booster
     if "lightgbm" in module or "lgbm" in name or "booster" in name:
         return True
 
-    # XGBoost
     if "xgboost" in module or "xgb" in name:
         return True
 
-    # CatBoost
     if "catboost" in module or "catboost" in name:
         return True
 
-    # sklearn tree models
     if "sklearn" in module and any(k in name for k in [
         "randomforest", "gradientboosting", "extratrees",
         "decisiontree", "histgradientboosting"
     ]):
         return True
 
-    # fallback: objects with predict + tree structure often work with TreeExplainer
+    # Detect other tree estimators by their prediction and tree attributes.
     if hasattr(model, "predict") and (hasattr(model, "trees_") or hasattr(model, "booster_")):
         return True
 
@@ -36,29 +31,30 @@ def compute_shap_values(model, x_data, x_background=None, check_additivity: bool
     """
     Compute SHAP values with automatic explainer selection.
 
-    - If model is tree-based: use shap.TreeExplainer (fast & stable).
-    - Otherwise: use shap.Explainer (generic).
+    Use TreeExplainer for tree models and Explainer for other models.
 
     Parameters
     ----------
-    model : trained model
+    model : object
+        Trained model to explain.
     x_data : pd.DataFrame or np.ndarray
-        data to explain
+        Feature data to explain.
     x_background : pd.DataFrame or np.ndarray or None
-        background data for non-tree explainers (optional)
+        Background data for non-tree explainers; defaults to x_data.
     check_additivity : bool
-        passed to tree explainer call
+        Whether to check additivity when calling the tree explainer.
 
     Returns
     -------
     shap.Explanation
+        SHAP values for x_data.
     """
     if _is_tree_model(model):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer(x_data, check_additivity=check_additivity)
         return shap_values
 
-    # non-tree: generic explainer (may be slower)
+    # Use the explained data as background when none is supplied.
     if x_background is None:
         explainer = shap.Explainer(model, x_data)
     else:

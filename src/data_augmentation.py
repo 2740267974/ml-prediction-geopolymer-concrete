@@ -12,35 +12,34 @@ from src.synthesizers import build_synthesizer
 
 class DataAugmentor:
     """
-    数据增强器：实现 Type II（非监督）数据增强，并应用论文中的误差过滤机制。
-    - 生成模型同时生成特征和 target。
-    - 使用一个基线模型（baseline_model）来预测生成特征，与生成 target 进行对比，
-      根据预测误差（error < 0.03 * y_pred）筛选高质量数据。
+    Generate synthetic features and targets with baseline error filtering.
+
+    Retain samples whose target error is below 3% of a positive baseline prediction.
     """
 
     def __init__(self, baseline_model):
-        self.baseline_model = baseline_model  # 用于过滤的预训练基线模型
+        self.baseline_model = baseline_model  # Pretrained model used to filter synthetic samples.
         self.generator = None
         self.metadata = None
         self.generator_method = None
 
     def fit_generator(
             self,
-            full_df: pd.DataFrame,  # <--- 修改：现在 CTGAN 训练需要完整的 DataFrame (特征 + target)
+            full_df: pd.DataFrame,
             method: str = "CTGAN",
             epochs: int = 500,
             batch_size: int = 500,
             verbose: bool = True,
             **kwargs
     ):
-        """在完整的 DataFrame (特征 + target) 上训练生成模型"""
+        """Train the synthesizer on a DataFrame containing features and the target."""
         method_key = method.upper()
         build_kwargs = dict(kwargs)
         if method_key in {"CUSTOM_GAN", "CUSTOMGAN", "GAN"} and "verbose" not in build_kwargs:
             build_kwargs["verbose"] = verbose
 
         self.metadata = SingleTableMetadata()
-        self.metadata.detect_from_dataframe(full_df)  # <--- detect from full_df
+        self.metadata.detect_from_dataframe(full_df)
 
         self.generator = build_synthesizer(
             method,
@@ -56,7 +55,7 @@ class DataAugmentor:
             print(f"开始训练 {method} 生成模型（epochs={epochs}）on full data...")
 
         start_time = time.time()
-        self.generator.fit(full_df)  # <--- fit on full_df
+        self.generator.fit(full_df)
         end_time = time.time()
 
         elapsed = end_time - start_time
@@ -70,8 +69,10 @@ class DataAugmentor:
             target_col: str = TARGET_COLUMN
     ) -> pd.DataFrame:
         """
-        生成初始数据 (特征 + target) -> 应用论文后处理/过滤 (round, 负值置0, Feature_11约束) ->
-        应用误差过滤 (generated target vs. baseline pred) -> 返回所有通过筛选的 syn_data
+        Generate and return a filtered DataFrame of synthetic features and targets.
+
+        Round values, clip negatives, enforce Feature_11 constraints, and retain
+        samples with positive targets that pass baseline prediction filtering.
         """
         if self.generator is None:
             raise RuntimeError("请先调用 fit_generator 训练生成模型")
@@ -79,20 +80,15 @@ class DataAugmentor:
         print(f"{self.generator_method} 生成 {initial_samples} 条初始合成数据 (特征 + target)...")
         syn_raw_df = self.generator.sample(num_rows=initial_samples)
 
-        # ===============================================
-        # 1. 论文通用后处理 (round, 负值置0) - 作用于所有列
-        # ===============================================
+        # Round all generated columns and clip negative values to zero.
         print("应用论文通用后处理 (round, 负值置0)...")
         syn_raw_df = syn_raw_df.round(3)
         syn_raw_df[syn_raw_df < 0] = 0
 
-        # ===============================================
-        # 2. 论文特定特征逻辑约束 (Feature_11)
-        # ===============================================
-        if 'Feature_11' in syn_raw_df.columns:  # 检查列是否存在
-            # 如果 Feature_11=0，则相关列置0
+        # Enforce consistency between Feature_11 and its dependent features.
+        if 'Feature_11' in syn_raw_df.columns:
             syn_raw_df.loc[syn_raw_df['Feature_11'] == 0, ['Feature_12', 'Feature_13', 'Feature_14']] = 0
-            # 排除无效组合：Feature_11 !=0 但相关列=0
+            # Exclude nonzero Feature_11 values with zero-valued dependent features.
             syn_raw_df = syn_raw_df[~((syn_raw_df['Feature_11'] != 0) &
                                       ((syn_raw_df['Feature_12'] == 0) | (syn_raw_df['Feature_13'] == 0) | (
                                                   syn_raw_df['Feature_14'] == 0)))]
@@ -100,32 +96,23 @@ class DataAugmentor:
         else:
             print(f"警告: 列 '{'Feature_11'}' 不存在，跳过 Feature_11 相关约束。请检查列名是否与原始数据匹配。")
 
-        # ===============================================
-        # 3. 误差过滤 (生成 target vs. baseline 预测 target)
-        #    这是你提供的代码片段中的核心过滤逻辑
-        # ===============================================
+        # Filter synthetic samples using the baseline model.
         x_generated = syn_raw_df.drop(target_col, axis=1).values
         y_generated = syn_raw_df[target_col].values
 
-        # 使用基线模型对生成特征进行预测
         y_pred_baseline = self.baseline_model.predict(x_generated)
 
-        # 计算误差
         error = np.abs(y_generated - y_pred_baseline)
 
-        # 筛选条件：误差小于 3% 的基线预测值
         initial_len = len(syn_raw_df)
-        # 避免除以0，以及过滤掉 y_pred_baseline 是负值或0的情况
-        # 确保 y_pred_baseline > 0 才能进行百分比误差计算
+        # Require positive baseline predictions and less than 3% relative error.
         valid_indices = (y_pred_baseline > 0) & (error < 0.03 * y_pred_baseline)
 
         syn_raw_df_filtered_error = syn_raw_df[valid_indices]
 
         print(f"误差过滤 (error < 0.03 * baseline_pred) 后保留 {len(syn_raw_df_filtered_error)} / {initial_len} 条")
 
-        # ===============================================
-        # 4. 负 target 过滤 (确保抗压强度 > 0)
-        # ===============================================
+        # Retain strictly positive compressive strengths.
         before_neg_filter = len(syn_raw_df_filtered_error)
         syn_data_final = syn_raw_df_filtered_error[syn_raw_df_filtered_error[target_col] > 0]
         print(f"负 target 过滤 ({target_col} > 0) 后保留 {len(syn_data_final)} / {before_neg_filter} 条")
@@ -144,7 +131,11 @@ class DataAugmentor:
             syn_data: Optional[pd.DataFrame] = None,
             initial_samples: int = 10000
     ) -> pd.DataFrame:
-        """使用 syn_data 池，按 ratios 合并数据并评估"""
+        """
+        Evaluate augmentation ratios using a supplied or generated synthetic sample pool.
+
+        Return a DataFrame of sample counts and test metrics for each ratio.
+        """
         if ratios is None:
             ratios = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
 
@@ -161,7 +152,6 @@ class DataAugmentor:
         n_original = len(original_df)
         print(f"原数据量: {n_original} 条")
 
-        # 如果未提供 syn_data，内部生成
         if syn_data is None:
             print("\n未提供 syn_data，内部生成 (特征 + target)...")
             syn_data = self.generate_and_predict(
@@ -171,7 +161,7 @@ class DataAugmentor:
         else:
             print(f"\n使用提供的 syn_data (大小: {len(syn_data)} 条)")
 
-        # 循环每个 ratio，从 syn_data subsample
+        # Sample synthetic rows in proportion to the original dataset size.
         for ratio in ratios:
             print(f"\n正在处理 ratio = {ratio} ...")
 
@@ -188,14 +178,13 @@ class DataAugmentor:
                 n_synthetic_actual = len(syn_df)
                 aug_df = pd.concat([original_df, syn_df], ignore_index=True)
 
-            # 分割
             X_aug = aug_df.drop(target_col, axis=1).values
             y_aug = aug_df[target_col].values
             x_train, x_test, y_train, y_test = train_test_split(
                 X_aug, y_aug, test_size=TEST_SIZE, random_state=RANDOM_STATE
             )
 
-            # 重训 LightGBM
+            # Train LightGBM on the augmented dataset.
             train_data = lgb.Dataset(x_train, label=y_train)
             valid_data = lgb.Dataset(x_test, label=y_test, reference=train_data)
             model = lgb.train(

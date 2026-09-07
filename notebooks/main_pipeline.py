@@ -1,3 +1,10 @@
+"""
+Minimal standalone LightGBM prediction example.
+
+The complete research workflow, including generative data augmentation
+and SHAP analysis, is provided in `main_pipeline.ipynb`.
+"""
+
 from pathlib import Path
 import sys
 

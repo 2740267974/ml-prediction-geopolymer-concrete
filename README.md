@@ -44,6 +44,10 @@ CTGAN, TVAE, and the Custom PyTorch GAN are implemented. The supplied
 plotting. Using CTGAN or TVAE may require model-specific training settings and
 corresponding adjustments to loss visualization.
 
+> The augmentation experiments are exploratory comparisons under the original
+> project evaluation protocol and should not be interpreted as an independent
+> final-test benchmark.
+
 Implemented prediction model utilities include:
 
 - Linear Regression

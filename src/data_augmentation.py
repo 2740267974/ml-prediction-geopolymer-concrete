@@ -52,7 +52,7 @@ class DataAugmentor:
         self.generator_method = method_key
 
         if verbose:
-            print(f"开始训练 {method} 生成模型（epochs={epochs}）on full data...")
+            print(f"Training {method} on the full dataset (epochs={epochs})...")
 
         start_time = time.time()
         self.generator.fit(full_df)
@@ -61,7 +61,7 @@ class DataAugmentor:
         elapsed = end_time - start_time
         minutes, seconds = divmod(elapsed, 60)
         if verbose:
-            print(f"生成模型训练完成！总耗时: {int(minutes)} 分 {seconds:.2f} 秒")
+            print(f"Synthesizer training completed in {int(minutes)} min {seconds:.2f} s")
 
     def generate_and_predict(
             self,
@@ -77,13 +77,13 @@ class DataAugmentor:
         or F_V (vol%), F_D, F_L, and F_M, with legacy names taking precedence.
         """
         if self.generator is None:
-            raise RuntimeError("请先调用 fit_generator 训练生成模型")
+            raise RuntimeError("Call fit_generator before generating synthetic samples.")
 
-        print(f"{self.generator_method} 生成 {initial_samples} 条初始合成数据 (特征 + target)...")
+        print(f"Generating {initial_samples} synthetic samples (features and target) with {self.generator_method}...")
         syn_raw_df = self.generator.sample(num_rows=initial_samples)
 
         # Round all generated columns and clip negative values to zero.
-        print("应用论文通用后处理 (round, 负值置0)...")
+        print("Rounding generated values and clipping negatives to zero...")
         syn_raw_df = syn_raw_df.round(3)
         syn_raw_df[syn_raw_df < 0] = 0
 
@@ -108,9 +108,9 @@ class DataAugmentor:
             syn_raw_df = syn_raw_df[~((syn_raw_df[volume_col] != 0) &
                                       ((syn_raw_df[diameter_col] == 0) | (syn_raw_df[length_col] == 0) | (
                                                   syn_raw_df[modulus_col] == 0)))]
-            print(f"应用了 {volume_col} 相关约束")
+            print(f"Applied fiber constraints using {volume_col}")
         else:
-            print(f"警告: 列 '{'Feature_11'}' 不存在，跳过 Feature_11 相关约束。请检查列名是否与原始数据匹配。")
+            print("Warning: No complete fiber column set found (Feature_11-Feature_14 or F_V (vol%), F_D, F_L, F_M); skipping fiber constraints.")
 
         # Filter synthetic samples using the baseline model.
         x_generated = syn_raw_df.drop(target_col, axis=1).values
@@ -126,15 +126,15 @@ class DataAugmentor:
 
         syn_raw_df_filtered_error = syn_raw_df[valid_indices]
 
-        print(f"误差过滤 (error < 0.03 * baseline_pred) 后保留 {len(syn_raw_df_filtered_error)} / {initial_len} 条")
+        print(f"Baseline agreement filter (baseline_pred > 0, error < 0.03 * baseline_pred): retained {len(syn_raw_df_filtered_error)} / {initial_len} samples")
 
         # Retain strictly positive compressive strengths.
         before_neg_filter = len(syn_raw_df_filtered_error)
         syn_data_final = syn_raw_df_filtered_error[syn_raw_df_filtered_error[target_col] > 0]
-        print(f"负 target 过滤 ({target_col} > 0) 后保留 {len(syn_data_final)} / {before_neg_filter} 条")
+        print(f"Positive target filter ({target_col} > 0): retained {len(syn_data_final)} / {before_neg_filter} samples")
 
         n_filtered = len(syn_data_final)
-        print(f"最终过滤后剩余 {n_filtered} 条高质量合成数据 (总通过率: {n_filtered / initial_samples:.2%})")
+        print(f"Retained {n_filtered} synthetic samples after filtering (retention rate: {n_filtered / initial_samples:.2%})")
 
         return syn_data_final
 
@@ -166,20 +166,20 @@ class DataAugmentor:
 
         results = []
         n_original = len(original_df)
-        print(f"原数据量: {n_original} 条")
+        print(f"Original dataset: {n_original} samples")
 
         if syn_data is None:
-            print("\n未提供 syn_data，内部生成 (特征 + target)...")
+            print("\nNo synthetic pool supplied; generating features and targets...")
             syn_data = self.generate_and_predict(
                 initial_samples=initial_samples,
                 target_col=target_col
             )
         else:
-            print(f"\n使用提供的 syn_data (大小: {len(syn_data)} 条)")
+            print(f"\nUsing the supplied synthetic pool ({len(syn_data)} samples)")
 
         # Sample synthetic rows in proportion to the original dataset size.
         for ratio in ratios:
-            print(f"\n正在处理 ratio = {ratio} ...")
+            print(f"\nProcessing augmentation ratio = {ratio}...")
 
             if ratio == 0:
                 aug_df = original_df.copy()
@@ -187,7 +187,7 @@ class DataAugmentor:
             else:
                 n_target = int(ratio * n_original)
                 if n_target > len(syn_data):
-                    print(f"警告: 所需 {n_target} 条 > syn_data 池大小 {len(syn_data)}，使用所有")
+                    print(f"Warning: Requested {n_target} samples exceed the synthetic pool size ({len(syn_data)}); using all available samples")
                     syn_df = syn_data.copy()
                 else:
                     syn_df = syn_data.sample(n=n_target, random_state=RANDOM_STATE)
@@ -223,6 +223,6 @@ class DataAugmentor:
                 "test_rmse": rmse,
                 "test_r2": r2,
             })
-            print(f"Ratio {ratio}: RMSE = {rmse:.4f}, R² = {r2:.4f} (合成样本实际添加: {n_synthetic_actual})")
+            print(f"Ratio {ratio}: RMSE = {rmse:.4f}, R² = {r2:.4f} (synthetic samples added: {n_synthetic_actual})")
 
         return pd.DataFrame(results)

@@ -96,7 +96,7 @@ The notebook is organized as:
 
 ## Data Format
 
-The current public data file contains 2,307 rows, 16 input features, and one
+The current public data file contains 2,264 rows, 16 input features, and one
 target column.
 
 The loader uses the first 16 columns as features and the last column as the
@@ -110,11 +110,11 @@ Current columns:
 
 | Column | Meaning |
 | --- | --- |
-| FA | Fly ash content |
+| FA1 | Fly ash content |
 | GGBS | Ground granulated blast-furnace slag |
 | SF | Silica fume |
 | MK | Metakaolin |
-| FA.1 | Fine aggregate content |
+| FA2 | Fine aggregate content |
 | CA | Coarse aggregate |
 | Molarity | Alkali activator molarity |
 | NaOH | Sodium hydroxide content |

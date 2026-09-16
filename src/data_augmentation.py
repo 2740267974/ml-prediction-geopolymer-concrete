@@ -187,8 +187,8 @@ class DataAugmentor:
             else:
                 n_target = int(ratio * n_original)
                 if n_target > len(syn_data):
-                    print(f"Warning: Requested {n_target} samples exceed the synthetic pool size ({len(syn_data)}); using all available samples")
-                    syn_df = syn_data.copy()
+                    print(f"Warning: Skipping augmentation ratio {ratio:.0%}: requires {n_target} synthetic samples, but only {len(syn_data)} are available")
+                    continue
                 else:
                     syn_df = syn_data.sample(n=n_target, random_state=RANDOM_STATE)
                 n_synthetic_actual = len(syn_df)

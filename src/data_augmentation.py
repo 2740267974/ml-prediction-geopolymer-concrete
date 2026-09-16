@@ -52,7 +52,7 @@ class DataAugmentor:
         self.generator_method = method_key
 
         if verbose:
-            print(f"Training {method} on the full dataset (epochs={epochs})...")
+            print(f"Training {method} on the supplied training data (epochs={epochs})...")
 
         start_time = time.time()
         self.generator.fit(full_df)
@@ -202,13 +202,10 @@ class DataAugmentor:
 
             # Train LightGBM on the augmented dataset.
             train_data = lgb.Dataset(x_train, label=y_train)
-            valid_data = lgb.Dataset(x_test, label=y_test, reference=train_data)
             model = lgb.train(
                 lgb_params,
                 train_data,
-                valid_sets=[valid_data],
-                num_boost_round=1000,
-                callbacks=[lgb.early_stopping(50), lgb.log_evaluation(0)]
+                num_boost_round=100,
             )
 
             y_pred = model.predict(x_test)
